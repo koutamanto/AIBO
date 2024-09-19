@@ -3,6 +3,10 @@ import gensim
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
+from aibo.connect.db import JsonController
+
+jc = JsonController(filename="databases/json/conversation_history.json")
+
 # MeCabを使った形態素解析（基本形を取得）
 def tokenize_text(text):
     mecab = MeCab.Tagger("-Ochasen")  # 詳細な解析
@@ -66,6 +70,30 @@ def analyze_and_calculate_similarity(text, word_list, words2scores, negative_wor
     average_score = total_score / negative_word_count if negative_word_count > 0 else 0
 
     return similarities, average_score
+
+def evaluate_urgency_score_by_word2vec(phone_number="080-0000-0000"):
+    user_conversation_history = jc.read_conversations_history()
+    message_logs = user_conversation_history[phone_number]
+    message_log_str = "\n".join([{"assistant": "AIBO", "user": "ユーザー"}[msg["role"]] + ":" + msg["content"] for msg in message_logs[1:] if msg["role"] == "user"])
+    print(message_log_str)
+    # 既存のワードリストとスコアの辞書を読み込み
+    with open("aibo/ai/word2vec/wordlist.txt", "r", encoding="utf-8") as f:
+        lines = f.readlines()
+        word_list = [word.split(":")[0].strip() for word in lines]  # ワードリスト
+        words2scores = {word.split(":")[0].strip(): int(word.split(":")[1]) for word in lines}  # スコアの辞書
+
+    # ネガティブワードリストの定義
+    negative_words = word_list  # wordlist.txtに含まれるすべての単語をネガティブワードとみなす
+
+    # 類似度とスコアの計算
+    result, average_score = analyze_and_calculate_similarity(message_log_str.replace("\n", ""), word_list, words2scores, negative_words)
+
+    # 結果を表示
+    for word, similarity in result.items():
+        print(f"Word: {word}, Similarity: {similarity}")
+    print(f"Average Score: {average_score*4}")
+    return average_score*4
+
 
 if __name__ == "__main__":
     # 解析するテキスト
