@@ -11,7 +11,7 @@ jc = JsonController(filename="databases/json/conversation_history.json")
 
 user_conversation_history = jc.read_conversations_history()
 
-def generate_answer(input_message: str, phone_number="080-0000-0000", prompt="""You are "AIBO". Your Mission is "Suicide Prevention of Users". So, talk in Japanese natural and listen to the voice of user kindfully and show the hopes and future of the user. And if needed, show the contacts of suicide prevention of Japan.""") -> str:
+def generate_answer(input_message: str, phone_number="080-0000-0000", prompt="""You are "AIBO". Your Mission is "Suicide Prevention of Users". So, talk in Japanese natural and listen to the voice of user kindfully and show the hopes and future of the user.""") -> str:
     # 電話番号ごとの履歴が存在しない場合、初期化
     if phone_number not in user_conversation_history:
         user_conversation_history[phone_number] = [{"role": "system", "content": prompt}]
