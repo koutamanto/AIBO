@@ -1,2 +1,5 @@
-env/.env
+**/.env
+.env
+app/chat/.env
 */conversation_history.json
+app/chat/linebot/**
