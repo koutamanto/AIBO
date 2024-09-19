@@ -1,0 +1,99 @@
+/* ベース設定 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #f2f2f7;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+/* チャット全体のコンテナ */
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 375px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* ヘッダー */
+.chat-header {
+    background-color: #007aff;
+    color: white;
+    text-align: center;
+    padding: 15px;
+    font-size: 18px;
+}
+
+/* チャットボックス */
+.chat-box {
+    flex-grow: 1;
+    padding: 15px;
+    overflow-y: auto;
+    background-color: #f7f7f7;
+    max-height: 60vh;
+}
+
+.chat-box .user-message,
+.chat-box .bot-message {
+    margin-bottom: 15px;
+    max-width: 70%;
+    word-wrap: break-word;
+}
+
+/* ユーザーのメッセージ */
+.user-message {
+    background-color: #007aff;
+    color: white;
+    padding: 10px;
+    border-radius: 20px;
+    align-self: flex-end;
+}
+
+/* ボットのメッセージ */
+.bot-message {
+    background-color: #e5e5ea;
+    color: black;
+    padding: 10px;
+    border-radius: 20px;
+    align-self: flex-start;
+}
+
+/* 入力エリア */
+.chat-input-container {
+    display: flex;
+    padding: 10px;
+    background-color: #f2f2f7;
+}
+
+#chat-input {
+    flex-grow: 1;
+    padding: 10px;
+    border-radius: 20px;
+    border: 1px solid #d1d1d6;
+    font-size: 16px;
+}
+
+.send-button {
+    background-color: #007aff;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 20px;
+    margin-left: 10px;
+    cursor: pointer;
+}
+
+.send-button:hover {
+    background-color: #005bb5;
+}
