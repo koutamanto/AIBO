@@ -3,3 +3,5 @@
 app/chat/.env
 */conversation_history.json
 app/chat/linebot/**
+databases/mongo/**
+app/chat/web/AIBO_web_linux/**
