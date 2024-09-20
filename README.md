@@ -1,6 +1,7 @@
 # AIBO
 ## AI Based Overcoming Support System(AIBO・相棒)
 ### AIを活用した自殺防止相談システムのコアシステム。
+### AIBO is AI Based Suicide Prevention and Overcoming Support System.
 
 # 概要
 - 近年増加する自殺を防止するためのシステム
