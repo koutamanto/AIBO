@@ -2,8 +2,107 @@ from pymongo import MongoClient
 from datetime import datetime
 
 # MongoDBに接続
-client = MongoClient('mongodb://localhost:27017/')  # ローカルのMongoDBに接続
-db = client['healthcare_system']  # データベース名
+client = MongoClient('mongodb://localhost:27017/')
+db = client['healthcare_system']
+
+# FacilitiesコレクションのCRUD操作
+facilities = db['Facilities']
+
+def create_facility(facility_data):
+    """
+    施設を作成する。
+    capacityは初期値として0を設定し、後で所属するcounselorの数に基づいて更新される。
+    """
+    facility_data['created_at'] = datetime.now()
+    facility_data['updated_at'] = datetime.now()
+    facility_data['capacity'] = 0  # 初期値は0
+    result = facilities.insert_one(facility_data)
+    print(f"施設作成: ID={result.inserted_id}")
+
+
+# CounselorsコレクションのCRUD操作
+counselors = db['Counselors']
+
+def create_or_update_counselor(counselor_data):
+    """
+    相談員を作成または更新する。
+    availabilityには曜日と時間帯を含める。
+    施設のcapacityも、対応可能な相談員が追加または更新されるたびに更新される。
+    """
+    counselor_data['updated_at'] = datetime.now()
+
+    # 存在確認し、存在する場合は更新、存在しない場合は新規作成 (upsert)
+    result = counselors.update_one(
+        {'counselor_id': counselor_data['counselor_id']},  # 同じIDの相談員を検索
+        {'$set': counselor_data},  # データを更新
+        upsert=True  # 存在しない場合は新規作成
+    )
+    
+    if result.matched_count > 0:
+        print(f"相談員 {counselor_data['counselor_id']} を更新しました。")
+    else:
+        print(f"相談員 {counselor_data['counselor_id']} を新規作成しました。")
+    
+    # 所属施設のcapacityを更新する
+    update_facility_capacity(counselor_data['affiliation'])
+
+def is_counselor_available(counselor, current_time=None):
+    """
+    相談員が現在の日時に対応可能かを確認する関数。
+    availabilityフィールドに基づいて現在の曜日と時間に対応可能な相談員のみを返す。
+    """
+    if current_time is None:
+        current_time = datetime.now()
+
+    # 現在の曜日と時間を取得
+    current_day_of_week = current_time.strftime('%A')  # 曜日
+    current_time_only = current_time.time()  # 時刻部分のみを取得 (datetime.time 型)
+
+    for availability in counselor.get('availability', []):
+        # 曜日が一致しているか確認
+        if availability['day_of_week'] == current_day_of_week:
+            # 文字列を time オブジェクトに変換して比較
+            start_time = datetime.strptime(availability['time_range']['start'], '%H:%M').time()
+            end_time = datetime.strptime(availability['time_range']['end'], '%H:%M').time()
+
+            # 現在の時刻が対応可能な時間範囲に含まれているか確認
+            if start_time <= current_time_only <= end_time:
+                return True
+
+    return False
+
+def get_available_counselors(facility_id, current_time=None):
+    """
+    特定の施設に所属する対応可能な相談員を取得する。
+    """
+    # 施設に所属するすべての相談員を取得
+    affiliated_counselors = counselors.find({'affiliation': facility_id})
+
+    # 現在対応可能な相談員をフィルタリング
+    available_counselors = [
+        counselor for counselor in affiliated_counselors
+        if is_counselor_available(counselor, current_time)
+    ]
+
+    return available_counselors
+
+def update_facility_capacity(facility_id):
+    """
+    施設に所属するcounselorの数に基づいて、施設のcapacityを更新する。
+    """
+    affiliated_counselors = counselors.find({'affiliation': facility_id})
+
+    # 現在の対応可能な相談員数をカウント
+    # available_counselor_count = sum(1 for _ in affiliated_counselors if affiliated_counselors)
+    available_counselor_count = len(get_available_counselors(facility_id, datetime.now()))
+
+    # capacityを更新
+    facilities.update_one(
+        {'facility_id': facility_id},
+        {'$set': {'capacity': available_counselor_count, 'updated_at': datetime.now()}}
+    )
+    print(f"施設 {facility_id} のcapacityを {available_counselor_count} に更新しました。")
+
 
 # UsersコレクションのCRUD操作
 users = db['Users']
@@ -61,34 +160,6 @@ def delete_consultation_log(log_id):
     print(f"削除された相談ログ: {result.deleted_count}")
 
 
-# FacilitiesコレクションのCRUD操作
-facilities = db['Facilities']
-
-def create_facility(facility_data):
-    """施設の作成"""
-    facility_data['created_at'] = datetime.now()
-    facility_data['updated_at'] = datetime.now()
-    result = facilities.insert_one(facility_data)
-    print(f"施設作成: ID={result.inserted_id}")
-
-def read_facility(facility_id):
-    """施設の読み込み"""
-    facility = facilities.find_one({'facility_id': facility_id})
-    print(f"施設情報: {facility}")
-    return facility
-
-def update_facility(facility_id, new_values):
-    """施設の更新"""
-    new_values['updated_at'] = datetime.now()
-    result = facilities.update_one({'facility_id': facility_id}, {'$set': new_values})
-    print(f"更新された施設: {result.modified_count}")
-
-def delete_facility(facility_id):
-    """施設の削除"""
-    result = facilities.delete_one({'facility_id': facility_id})
-    print(f"削除された施設: {result.deleted_count}")
-
-
 # TriageResultsコレクションのCRUD操作
 triage_results = db['TriageResults']
 
@@ -143,38 +214,57 @@ def delete_activity_log(activity_id):
 
 # 使用例
 if __name__ == "__main__":
-    # ユーザー作成例
-    user_data = {
-        'user_id': 'user001',
-        'username': 'taro',
-        'password': 'hashed_password',
-        'nickname': 'Taro',
-        'age': 30,
-        'gender': 'male',
-        'region': 'Tokyo',
-        'occupation': 'Engineer'
-    }
-    create_user(user_data)
 
-    # 相談ログの作成例
-    consultation_data = {
-        'log_id': 'log001',
-        'user_id': 'user001',
-        'consultation_date': datetime.now(),
-        'content': '相談内容です。',
-        'score': 85,
-        'facility_id': 'facility001'
-    }
-    create_consultation_log(consultation_data)
+    # # 1. 施設を作成
+    # facility_data = {
+    #     'facility_id': 'facility001',
+    #     'name': 'Tokyo Mental Health Center',
+    #     'type': 'Public',
+    #     'contact_info': '123-456-7890',
+    #     'address': 'Tokyo, Japan',
+    #     'specializations': ['Mental Health', 'Family Issues']
+    # }
+    # create_facility(facility_data)
 
-    # 施設の作成例
-    facility_data = {
-        'facility_id': 'facility001',
-        'name': 'Tokyo Mental Health Center',
-        'type': 'Public',
-        'contact_info': '123-456-7890',
-        'address': 'Tokyo, Japan',
-        'capacity': 100,
-        'specializations': ['Mental Health', 'Family Issues']
+    # # 2. 相談員を作成し、施設に所属させる
+    # counselor_data = {
+    #     'counselor_id': 'counselor001',
+    #     'name': 'John Doe',
+    #     'affiliation': 'facility001',  # 所属する施設のID
+    #     'contact_info': '987-654-3210',
+    #     'specialization': 'Mental Health',
+    #     'availability': [
+    #         { 'day_of_week': 'Monday', 'time_range': { 'start': '09:00', 'end': '17:00' }},
+    #         { 'day_of_week': 'Wednesday', 'time_range': { 'start': '13:00', 'end': '18:00' }}
+    #     ]
+    # }
+    # create_or_update_counselor(counselor_data)
+
+    # # 3. さらに別の相談員を作成し、同じ施設に所属させる
+    # counselor_data_2 = {
+    #     'counselor_id': 'counselor002',
+    #     'name': 'Jane Smith',
+    #     'affiliation': 'facility001',  # 同じ施設に所属
+    #     'contact_info': '987-654-3220',
+    #     'specialization': 'Family Issues',
+    #     'availability': [
+    #         { 'day_of_week': 'Tuesday', 'time_range': { 'start': '10:00', 'end': '16:00' }},
+    #         { 'day_of_week': 'Thursday', 'time_range': { 'start': '09:00', 'end': '14:00' }}
+    #     ]
+    # }
+    # create_or_update_counselor(counselor_data_2)
+
+    counselor_data_3 = {
+        'counselor_id': 'counselor001',
+        'name': 'John Doe',
+        'affiliation': 'facility001',  # 同じ施設に所属
+        'contact_info': '987-654-0001',
+        'specialization': 'Family Issues',
+        'availability': [
+            { 'day_of_week': 'Tuesday', 'time_range': { 'start': '10:00', 'end': '16:00' }},
+            { 'day_of_week': 'Thursday', 'time_range': { 'start': '09:00', 'end': '14:00' }},
+            { 'day_of_week': 'Friday', 'time_range': { 'start': '10:00', 'end': '14:00' }}
+        ]
     }
-    create_facility(facility_data)
+    create_or_update_counselor(counselor_data_3)
+    update_facility_capacity("facility001")
