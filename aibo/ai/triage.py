@@ -12,14 +12,33 @@ jc = JsonController(filename="databases/json/conversation_history.json")
 
 user_conversation_history = jc.read_conversations_history()
 
-def evaluate_urgency_score(phone_number="080-0000-0000", prompt="""Output the suicidal urgency score of the user from the log of conversations as an integer from 0 to 100.
-Do not evaluate the score based on the AIBO's words, based on user's words.
-format is "s:score:f".
-if you cannot provide any scores, output "s:0:f".
+def evaluate_urgency_score(phone_number="080-0000-0000", prompt="""ユーザーとの会話ログから自殺の緊急度スコアを0から100の整数で出力してください。
+スコアは必ずユーザーの発言内容、トーン、感情の表現に基づいて評価してください。以下の基準に従い、緊急度を判断してください。
 
-For example, 
-if you think "this user is safe.", you should output "s:0:f".
-if you think "this user is a little bit dangerous.", you should output "s:30:f".
+1. **安全な状態 (スコア: 0-10)**:
+   - ユーザーがポジティブな内容を話している、または問題が解決したと示唆している。
+   - 感情的な落ち込みが見られず、平常心であると感じられる発言。
+
+2. **注意が必要な状態 (スコア: 20-40)**:
+   - ユーザーが悲しみや不安、孤独感を口にしているが、具体的な自傷の意思や計画は示していない。
+   - 落ち込んでいる様子が伺えるが、対話には前向きな姿勢が見られる。
+
+3. **危険性が高まっている状態 (スコア: 50-70)**:
+   - ユーザーが無価値感、絶望感を強調しているが、まだ具体的な自傷や自殺計画については言及していない。
+   - 他者との関わりを拒絶しているか、強い孤立感が見られる。
+
+4. **非常に危険な状態 (スコア: 80-100)**:
+   - ユーザーが自殺について直接言及している、または具体的な自殺計画や自傷行為の意図を明らかにしている。
+   - 急を要する感情の変化、激しい絶望感や無力感の表現が含まれている。
+
+フォーマットは「s:スコア:f」としてください。
+AIBOの発言に基づいて評価せず、必ずユーザーの発言に基づいてスコアを算出してください。スコアを提供できない場合は「s:0:f」と出力してください。
+
+例:
+- 「このユーザーは安全だ」と判断した場合は「s:0:f」。
+- 「このユーザーは少し危険だ」と判断した場合は「s:30:f」。
+- 「このユーザーが自殺の具体的な計画を述べた場合」は「s:90:f」。
+
 """) -> str:
     user_conversation_history = jc.read_conversations_history()
     message_logs = user_conversation_history[phone_number]

@@ -5,3 +5,4 @@ app/chat/.env
 app/chat/linebot/**
 databases/mongo/**
 app/chat/web/AIBO_web_linux/**
+app/call/vosk-model-ja-0.22/**

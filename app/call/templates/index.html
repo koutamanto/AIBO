@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket接続</title>
+</head>
+<body>
+    <h1>リアルタイム音声認識</h1>
+    <div>
+        <p>認識結果：</p>
+        <div id="transcript"></div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"></script>
+    <script>
+        // 現在のホストを取得し、WebSocketのURLを構築
+        const host = window.location.hostname; // 現在のホスト名 (例: 192.168.0.10)
+        const port = 5000; // サーバーのポート番号
+        const socket = io.connect(`http://${host}:${port}`); // WebSocketサーバーに接続
+
+        socket.on('connect', function() {
+            console.log('Connected to the server');
+        });
+
+        // サーバーからの認識結果を受け取って表示
+        socket.on('recognition_result', function(text) {
+            document.getElementById('transcript').textContent = text;
+        });
+
+        // マイクから音声を取得してWebSocketでサーバーに送信
+        navigator.mediaDevices.getUserMedia({ audio: true })
+          .then(stream => {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const input = audioContext.createMediaStreamSource(stream);
+            const processor = audioContext.createScriptProcessor(1024, 1, 1);
+
+            input.connect(processor);
+            processor.connect(audioContext.destination);
+
+            processor.onaudioprocess = function(e) {
+                const audioData = e.inputBuffer.getChannelData(0);  // 音声データを取得
+                socket.emit('audio_data', audioData);  // WebSocket経由でサーバーに送信
+            };
+          })
+          .catch(err => {
+            console.log('Error capturing audio: ' + err);
+          });
+    </script>
+</body>
+</html>
