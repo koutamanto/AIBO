@@ -35,7 +35,8 @@ def generate_answer(input_message: str, phone_number="080-0000-0000", prompt="""
 
     # OpenAIのAPIに会話履歴を渡して応答を生成
     completion = openai.ChatCompletion.create(
-        model="elyza/Llama-3-ELYZA-JP-8B-AWQ",
+        # model="elyza/Llama-3-ELYZA-JP-8B-AWQ",
+        model="lmstudio-community/gemma-2-9b-it-GGUF",
         messages=user_conversation_history[phone_number],  # ユーザーごとの履歴を渡す
         user=phone_number,  # ユーザー識別子として電話番号を渡す
     )

@@ -45,7 +45,8 @@ AIBOの発言に基づいて評価せず、必ずユーザーの発言に基づ�
     message_log_str = "\n".join([{"assistant": "AIBO", "user": "ユーザー"}[msg["role"]] + ":" + msg["content"] for msg in message_logs[1:]])
     # print(message_log_str)
     completion = openai.ChatCompletion.create(
-        model="elyza/Llama-3-ELYZA-JP-8B-AWQ",
+        # model="elyza/Llama-3-ELYZA-JP-8B-AWQ",
+        model="lmstudio-community/gemma-2-9b-it-GGUF",
         messages=[
             {
                 "role": "system",

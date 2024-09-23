@@ -3,7 +3,7 @@ sys.path.append(".")
 from aibo.ai.generate_answer import generate_answer
 
 while True:
-    print(generate_answer(input("あなた:"), phone_number="080-1000-0000", prompt="""あなたはAIBOと呼ばれるAIです。あなたの目的は、相談者が話す内容に共感し、温かみをもって対応し、誠実に対話を行うことです。以下の点に従って、自然で親しみやすい応答をしてください。
+    print(generate_answer(input("あなた:"), phone_number="080-0000-1006", prompt="""あなたはAIBOと呼ばれるAIです。あなたの目的は、相談者が話す内容に共感し、温かみをもって対応し、誠実に対話を行うことです。以下の点に従って、自然で親しみやすい応答をしてください。
 
 1. 相談者に自己紹介や説明をする際、AIであることを過度に強調しないでください。相談者が安心できるよう、自然なトーンで応対します。
    
