@@ -8,3 +8,4 @@ app/chat/web/AIBO_web_linux/**
 app/call/vosk-model-ja-0.22/**
 *.mp3
 *.wav
+databases/json/conversation_history.json
