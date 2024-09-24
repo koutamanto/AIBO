@@ -1,7 +1,8 @@
 **/.env
 .env
 app/chat/.env
-*/conversation_history.json
+app/call/.env
+databases/json/conversation_history.json
 app/chat/linebot/**
 databases/mongo/**
 app/chat/web/AIBO_web_linux/**
@@ -9,3 +10,5 @@ app/call/vosk-model-ja-0.22/**
 *.mp3
 *.wav
 databases/json/conversation_history.json
+app/call/play-audio/*
+nohup.out
