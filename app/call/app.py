@@ -1,45 +1,81 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torchaudio
-from transformers import AutoConfig, Wav2Vec2FeatureExtractor
-
-import librosa
-import IPython.display as ipd
+from flask import Flask, render_template
+from flask_socketio import SocketIO, emit
 import numpy as np
-import pandas as pd
+import vosk
+import json
+import time
 
-# import sys
-# sys.path.append(".")
+app = Flask(__name__)
+socketio = SocketIO(app)
 
-from src.models import Wav2Vec2ForSpeechClassification
+# Voskモデルのロード
+model = vosk.Model("./vosk-model-ja-0.22")
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model_name_or_path = "m3hrdadfi/wav2vec2-xlsr-greek-speech-emotion-recognition"
-config = AutoConfig.from_pretrained(model_name_or_path)
-feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(model_name_or_path)
-sampling_rate = feature_extractor.sampling_rate
-model = Wav2Vec2ForSpeechClassification.from_pretrained(model_name_or_path).to(device)
+# グローバル変数の定義
+audio_buffer = []  # 音声データを蓄積
+last_received_time = time.time()  # 最後に音声データが送られた時刻
+SILENCE_THRESHOLD = 2  # 無音と判断するまでの秒数
 
-def speech_file_to_array_fn(path, sampling_rate):
-    speech_array, _sampling_rate = torchaudio.load(path)
-    resampler = torchaudio.transforms.Resample(_sampling_rate)
-    speech = resampler(speech_array).squeeze().numpy()
-    return speech
+@app.route("/")
+def index_page():
+    return render_template("index.html")
 
+# 接続が確立された際に音声ストリーム受信を開始
+@socketio.on('connect')
+def handle_connect():
+    global audio_buffer, last_received_time
+    print("クライアントが接続されました")
+    audio_buffer = []  # バッファを初期化
+    last_received_time = time.time()  # タイムスタンプを初期化
 
-def predict(path, sampling_rate):
-    speech = speech_file_to_array_fn(path, sampling_rate)
-    inputs = feature_extractor(speech, sampling_rate=sampling_rate, return_tensors="pt", padding=True)
-    inputs = {key: inputs[key].to(device) for key in inputs}
+# 音声ストリームを受信して蓄積
+@socketio.on('audio_stream')
+def handle_audio_stream(data):
+    global audio_buffer, last_received_time
+    audio_data = np.frombuffer(data, dtype=np.int16)
 
-    with torch.no_grad():
-        logits = model(**inputs).logits
+    # 音声データを蓄積
+    audio_buffer.append(audio_data)
+    last_received_time = time.time()  # データ受信時刻を更新
 
-    scores = F.softmax(logits, dim=1).detach().cpu().numpy()[0]
-    outputs = [{"Emotion": config.id2label[i], "Score": f"{round(score * 100, 3):.1f}%"} for i, score in enumerate(scores)]
-    return outputs
+    # 無音かどうかを確認
+    check_for_silence()
 
-path = "/home/kouta/Downloads/man-scream-121085.mp3"
-outputs = predict(path, sampling_rate)
-print(outputs)
+# 無音かどうかをチェックし、無音なら音声認識を実行
+def check_for_silence():
+    global audio_buffer, last_received_time
+    current_time = time.time()
+
+    # 一定時間無音が続いたら発話が完了したと判断
+    if current_time - last_received_time > SILENCE_THRESHOLD:
+        if len(audio_buffer) > 0:
+            process_audio_data()
+        audio_buffer = []  # バッファをクリア
+
+# 音声認識を実行し、結果をemit
+def process_audio_data():
+    global audio_buffer
+
+    # 音声データを結合して1つの音声データに
+    audio_data = np.concatenate(audio_buffer)
+
+    recognizer = vosk.KaldiRecognizer(model, 16000)
+
+    # 音声認識を実行
+    if recognizer.AcceptWaveform(audio_data.tobytes()):
+        result = json.loads(recognizer.Result())
+        recognized_text = result.get('text', '')
+        print(f"認識されたテキスト: {recognized_text}")
+        if recognized_text.strip():
+            emit('recognition_result', recognized_text)
+
+# 切断された際の処理
+@socketio.on('disconnect')
+def handle_disconnect():
+    print("クライアントが切断されました")
+    # 切断されたときに残っているデータを処理
+    if len(audio_buffer) > 0:
+        process_audio_data()
+
+if __name__ == '__main__':
+    socketio.run(app, host='0.0.0.0', port=8080, debug=True)

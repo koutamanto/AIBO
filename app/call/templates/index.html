@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音声認識 WebSocket</title>
+</head>
+<body>
+    <h1>リアルタイム音声認識</h1>
+    <button id="start-recording">録音開始</button>
+    <p>認識結果: <span id="transcript"></span></p>
+
+    <script>
+        const socket = new WebSocket('wss://' + location.host + '/audio_stream');
+
+        socket.onopen = () => {
+            console.log('WebSocket接続が確立されました');
+        };
+
+        socket.onclose = (event) => {
+            console.log(`WebSocket接続が閉じられました (code=${event.code}, reason=${event.reason})`);
+        };
+
+        socket.onerror = (error) => {
+            console.error('WebSocketエラーが発生しました:', error);
+        };
+
+        // マイクから音声を取得して送信
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+            const input = audioContext.createMediaStreamSource(stream);
+            const processor = audioContext.createScriptProcessor(1024, 1, 1);
+
+            input.connect(processor);
+            processor.connect(audioContext.destination);
+
+            processor.onaudioprocess = (e) => {
+                const audioData = e.inputBuffer.getChannelData(0);
+                const int16Data = convertFloat32ToInt16(audioData);
+
+                // WebSocketで音声データを送信
+                if (socket.readyState === WebSocket.OPEN) {
+                    socket.send(int16Data.buffer);
+                }
+            };
+        });
+
+        // Float32ArrayをInt16Arrayに変換
+        function convertFloat32ToInt16(float32Array) {
+            let int16Array = new Int16Array(float32Array.length);
+            for (let i = 0; i < float32Array.length; i++) {
+                int16Array[i] = Math.min(1, float32Array[i]) * 0x7FFF;
+            }
+            return int16Array;
+        }
+
+    </script>
+</body>
+</html>
