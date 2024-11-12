@@ -51,7 +51,7 @@
 - Python3
 - mongoDB
   - ポート 27017
-- ML Studio
+- LM Studio
   - モデル: elyza/Llama-3-ELYZA-JP-8B-AWQ
   - ポート1234でサーバー立ち上げ
 記述中...
